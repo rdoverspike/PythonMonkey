@@ -318,7 +318,8 @@ class ADB:
         execute a shell command on the device.
         """
         sh = self.makeshell(cmd)
-        time.sleep(0.1)
+        #time.sleep(.01) cut off long adb input text strings.
+        time.sleep(1)
         return sh.read()
 
     def forward(self, local, remote):
