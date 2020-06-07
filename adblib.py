@@ -56,7 +56,7 @@ class ADBConnection:
 
     def readavailable(self):
         self.sock.setblocking(0)
-        timeout_in_seconds = 0.5
+        timeout_in_seconds = 1.0
         ready = select.select([self.sock], [], [], timeout_in_seconds)
         data = None
         if ready[0]:
@@ -318,8 +318,7 @@ class ADB:
         execute a shell command on the device.
         """
         sh = self.makeshell(cmd)
-        #time.sleep(.01) cut off long adb input text strings.
-        time.sleep(1)
+        time.sleep(.01) 
         return sh.read()
 
     def forward(self, local, remote):
