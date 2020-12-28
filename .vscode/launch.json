@@ -1,0 +1,24 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+
+        {
+            "name": "adbexec long string test",
+            "type": "python",
+            "request": "launch",
+            "program": "C:\\src\\PythonMonkey\\examples\\adbexec.py",
+            "cwd": "${workspaceFolder}",
+            "console": "integratedTerminal",
+            "python": "${command:python.interpreterPath}",
+            // TODO: justMyCode is recognized but doesn't get passed onto cmdline.
+            "justMyCode": false,
+            "args": [
+                // Result on device should end in a 9
+                "input text 123456789123456789123456789123456789123456789123456789123456789123456789123456789123456789123456789123456789123456789123456789123456789123456789123456789123456789123456789123456789",
+            ]
+        },
+    ]
+}

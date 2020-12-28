@@ -32,15 +32,62 @@ class ADBConnection:
         self.sock = socket.socket()
         self.sock.connect(("127.0.0.1", 5037))
 
-    def close(self):
-        self.sock.close()
+    """ When ADBConnection is garbage collected, so is the socket, which may kill the adb command still
+        executing on the device for exec or shell commands on some devices. """
+    def __del__(self):
+        if self.sock:
+            self.sock.close()
 
+    def close(self):
+        if self.sock:
+            self.sock.close()
+
+    """The device client will close the socket after the command executes, so we'll poll until
+    it's closed before returning. Otherwise, once the socket goes out of scope
+    python might close the socket on our end, which causes the command to abruptly stop executing
+    on at least some devices (MiMax2).
+    """
     def send(self, cmd):
-        self.sock.send(b"%04x" % len(cmd) + cmd.encode('utf-8'))
+        sent = self.sock.send(b"%04x" % len(cmd) + cmd.encode('utf-8'))
+        if sent != (len(cmd) + 4):
+            raise Exception("Failed to send command.")
 
         resp = self.sock.recv(4)
         if resp != b'OKAY':
             raise Exception("ADB:%s" % resp)
+    
+        # These commands need to block.
+        if not (cmd.startswith("exec") or cmd.startswith("shell")):
+            return None
+        print("exec or shell command, gotta block")
+        ret = ""
+        def is_socket_closed(sock: socket.socket) -> bool:
+            wasblocking = sock.getblocking()
+            try:
+                # this will try to read bytes without blocking and also without removing them from buffer (peek only)
+                # socket.MSG_DONTWAIT flag doesn't exist on Windows, use setblocking.
+                sock.setblocking(False)
+                data = sock.recv(16, socket.MSG_PEEK) # socket.MSG_DONTWAIT | 
+                if len(data) == 0:
+                    return True
+                ret += self.recv()
+            except BlockingIOError:
+                return False  # socket is open and reading from it would block
+            except ConnectionResetError:
+                return True  # socket was closed for some other reason
+            except Exception as e:
+                raise Exception("unexpected exception when checking if a socket is closed", e)
+                return False
+            finally:
+                sock.setblocking(wasblocking)
+            return False
+        mustend = time.time() + 30
+        while not is_socket_closed(self.sock):
+            if time.time() > mustend:
+                raise TimeoutError("Adb timed out after 30 seconds.")
+            time.sleep(.1)
+            print("baby sleep in new")
+        return ret
 
     def recv(self):
         resplen = self.sock.recv(4).decode('utf-8')
@@ -140,6 +187,11 @@ class ADBShell:
         self.conn.send("shell:%s" % cmd)
         #response = conn.read()
         #return response.decode('utf-8')
+
+    """ When this obj is garbage collected, the conn will close. """
+    def __del__(self):
+        if self.conn:
+            self.conn.close()
 
     def close(self):
         self.conn.close()
@@ -278,11 +330,16 @@ class ADB:
         `exec` can be used as an alternative to the `shell` command.
         """
         conn = self.maketransport()
-        conn.send("exec:%s" % cmd)
-        time.sleep(0.1)
-        res = conn.readavailable()
-        if res:
-            return res.decode('utf-8')
+        # self.conn = conn
+        return conn.send("exec:%s" % cmd)
+        # return ret
+        # if ret != len("exec:%s" % cmd):
+        #     raise Exception("Didn't send the right length")
+        # res = conn.readavailable()
+        # dec = None
+        # if res:
+        #     dec=res.decode('utf-8')
+        # return dec
 
     def version(self):
         """
@@ -317,9 +374,7 @@ class ADB:
         """
         execute a shell command on the device.
         """
-        sh = self.makeshell(cmd)
-        time.sleep(.01) 
-        return sh.read()
+        self.makeshell(cmd).read()
 
     def forward(self, local, remote):
         """

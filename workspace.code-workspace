@@ -1,0 +1,21 @@
+{
+	"folders": [
+		{
+			"path": "."
+		}
+	],
+	"settings": {
+		"jupyter.debugJustMyCode": false,
+		"debug.allowBreakpointsEverywhere": true,
+		"python.pythonPath": "${env:LOCALAPPDATA}/miniconda/envs/pogo/python.exe",
+		"python.condaPath": "${env:LOCALAPPDATA}/miniconda/envs/pogo/python.exe",
+		"python.venvPath": "${env:LOCALAPPDATA}/miniconda/envs",
+		"jupyter.jupyterCommandLineArguments": [ "potato"
+		
+		],
+		"java.debug.settings.exceptionBreakpoint.skipClasses": [
+		
+		],
+		// "terminal.integrated.automationShell.windows": "justMyCode=false",
+	}
+}

@@ -21,7 +21,7 @@ class DeviceInteraction:
 
 
     def unlockphone(self, pin):
-        screenstate = self.adb.devicestate()
+        screenstate = self.adb.devicestate_nfc()
         print("screen='%s'" % screenstate)
 
         if not screenstate:
@@ -45,7 +45,7 @@ class DeviceInteraction:
             self.mon.keyevent(66)   # enter pin
 
         time.sleep(1.0)   # NOTE: need much longer here on android6 than on android9
-        screenstate = self.adb.devicestate()
+        screenstate = self.adb.devicestate_nfc()
         print("pin -> screen='%s'" % screenstate)
 
         return screenstate == 'ON_UNLOCKED'
