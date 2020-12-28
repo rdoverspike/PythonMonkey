@@ -59,7 +59,6 @@ class ADBConnection:
         # These commands need to block.
         if not (cmd.startswith("exec") or cmd.startswith("shell")):
             return None
-        print("exec or shell command, gotta block")
         ret = ""
         def is_socket_closed(sock: socket.socket) -> bool:
             wasblocking = sock.getblocking()
@@ -85,9 +84,8 @@ class ADBConnection:
         while not is_socket_closed(self.sock):
             if time.time() > mustend:
                 raise TimeoutError("Adb timed out after 30 seconds.")
-            time.sleep(.1)
-            print("baby sleep in new")
-        return ret
+            time.sleep(.01)
+        return str(ret)
 
     def recv(self):
         resplen = self.sock.recv(4).decode('utf-8')
