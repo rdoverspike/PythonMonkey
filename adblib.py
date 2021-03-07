@@ -55,37 +55,35 @@ class ADBConnection:
         resp = self.sock.recv(4)
         if resp != b'OKAY':
             raise Exception("ADB:%s" % resp)
+
+        time.sleep(.1)
     
         # These commands need to block.
-        if not (cmd.startswith("exec") or cmd.startswith("shell")):
-            return None
-        ret = ""
-        def is_socket_closed(sock: socket.socket) -> bool:
+        if not (cmd.startswith("exec") or cmd.startswith("shell")) or True: # TODO 
+            return
+        """ Wait for a result via peek """
+        def is_completed(sock: socket.socket) -> bool:
             wasblocking = sock.getblocking()
             try:
                 # this will try to read bytes without blocking and also without removing them from buffer (peek only)
                 # socket.MSG_DONTWAIT flag doesn't exist on Windows, use setblocking.
                 sock.setblocking(False)
                 data = sock.recv(16, socket.MSG_PEEK) # socket.MSG_DONTWAIT | 
-                if len(data) == 0:
-                    return True
-                ret += self.recv()
+                return len(data) != 0
             except BlockingIOError:
                 return False  # socket is open and reading from it would block
             except ConnectionResetError:
                 return True  # socket was closed for some other reason
             except Exception as e:
                 raise Exception("unexpected exception when checking if a socket is closed", e)
-                return False
             finally:
                 sock.setblocking(wasblocking)
-            return False
-        mustend = time.time() + 30
-        while not is_socket_closed(self.sock):
+        mustend = time.time() + 10
+        while not is_completed(self.sock):
             if time.time() > mustend:
-                raise TimeoutError("Adb timed out after 30 seconds.")
+                raise TimeoutError("Adb timed out after 10 seconds.")
             time.sleep(.01)
-        return str(ret)
+        return
 
     def recv(self):
         resplen = self.sock.recv(4).decode('utf-8')
@@ -182,9 +180,7 @@ class ADBShell:
     """
     def __init__(self, conn, cmd):
         self.conn = conn
-        self.conn.send("shell:%s" % cmd)
-        #response = conn.read()
-        #return response.decode('utf-8')
+        conn.send("shell:%s" % cmd)
 
     """ When this obj is garbage collected, the conn will close. """
     def __del__(self):
@@ -329,15 +325,14 @@ class ADB:
         """
         conn = self.maketransport()
         # self.conn = conn
-        return conn.send("exec:%s" % cmd)
+        conn.send("exec:%s" % cmd)
         # return ret
         # if ret != len("exec:%s" % cmd):
         #     raise Exception("Didn't send the right length")
-        # res = conn.readavailable()
-        # dec = None
-        # if res:
-        #     dec=res.decode('utf-8')
-        # return dec
+        res = conn.readavailable()
+        if not res:
+            return None
+        return res.decode('utf-8')
 
     def version(self):
         """
